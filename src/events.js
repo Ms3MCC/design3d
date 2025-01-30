@@ -45,16 +45,6 @@ export function handleKeyboardMovement(selectedObject,keysPressed,params,pane,my
         if (keysPressed["d"]) selectedObject.rotation.y += rotationSpeed;
         if (keysPressed["q"]) selectedObject.rotation.z -= rotationSpeed;
         if (keysPressed["e"]) selectedObject.rotation.z += rotationSpeed;
-
-
-        // Update Tweakpane
-        // params.positionX = selectedObject.position.x;
-        // params.positionY = selectedObject.position.y;
-        // params.positionZ = selectedObject.position.z;
-        // params.rotationX = selectedObject.rotation.x;
-        // params.rotationY = selectedObject.rotation.y;
-        // params.rotationZ = selectedObject.rotation.z;
-        // pane.refresh();
     }
 
        //rotate group
