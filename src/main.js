@@ -4,6 +4,8 @@ import * as obj from './obj.js'
 import * as et from './events.js'
 import * as rc from './myRayCaster.js'
 import { Pane } from "tweakpane";
+import { createGridHelpers } from './gridHelper.js';
+import { createCornerViewport } from './viewportHelper.js'
 
 
 
@@ -25,7 +27,12 @@ const controls = setUp.enableOrbitControls(camera,canvas);
 const mygroup = new THREE.Group();
 scene.add(mygroup)
 
+const [gridXZ, gridXY, gridYZ] = createGridHelpers(100, 100); //size, divisions
+scene.add(gridXZ);
+//scene.add(gridXY);
+//scene.add(gridYZ);
 
+const cornerViewport = createCornerViewport(camera, controls);
 
 //  tweakpane construction 
 const pane = new Pane();
@@ -75,6 +82,7 @@ function animate() {
     requestAnimationFrame(animate);
     et.handleKeyboardMovement(selectedObject,keysPressed,params,pane,mygroup,moveSpeed,rotationSpeed);
     selectedObject = getUpdatedSelectedObject();
+    cornerViewport.update()
     controls.update();
     renderer.render(scene, camera);
 }
