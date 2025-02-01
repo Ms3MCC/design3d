@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 
-export function createScene(color="white",fov=75,near=1,far=2000,camx=0,camy=5,camz=15)
+export function createScene(color="black",fov=75,near=1,far=2000,camx=0,camy=5,camz=15)
 {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(color);
