@@ -3,15 +3,13 @@ import * as THREE from 'three';
 class CornerViewport {
     constructor(mainCamera, mainControls) {
         this.size = 200;
+        this.animationDuration = 100;
         this.isAnimating = false;
-        this.animationDuration = 100; // milliseconds
+        this.isDragging = false;
+        this.previousMousePosition = new THREE.Vector2();
         
         // Create viewport scene
         this.scene = new THREE.Scene();
-        
-        // Create scene pivot point for rotation
-        this.scenePivot = new THREE.Object3D();
-        this.scene.add(this.scenePivot);
         
         // Create viewport camera
         this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
@@ -26,8 +24,8 @@ class CornerViewport {
         // Create container div
         this.container = document.createElement('div');
         this.container.style.position = 'fixed';
-        this.container.style.bottom = '10px';
-        this.container.style.left = '10px';
+        this.container.style.bottom = '30px';
+        this.container.style.left = '30px';
         this.container.style.width = `${this.size}px`;
         this.container.style.height = `${this.size}px`;
 
@@ -48,14 +46,16 @@ class CornerViewport {
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
         directionalLight.position.set(5, 5, 5);
         this.scene.add(ambientLight, directionalLight);
-
+        
+        this.createRing();
+        
         // Store references
         this.mainCamera = mainCamera;
         this.mainControls = mainControls;
 
         // Add CSS styles for buttons
         this.addStyles();
-        
+
         // Create arrow controls
         this.createArrowControls();
 
@@ -64,10 +64,19 @@ class CornerViewport {
 
         // Initialize rotation quaternion
         this.currentRotation = new THREE.Quaternion();
+
+        // Setup mouse event listeners
+        this.setupMouseControls();
+
+        // Initialize raycaster
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
     }
 
     addStyles() {
+
         const styleSheet = document.createElement('style');
+
         styleSheet.textContent = `
             .viewport-arrow {
                 position: absolute;
@@ -86,20 +95,24 @@ class CornerViewport {
                 transition: all 0.2s ease;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             }
+
             .viewport-arrow:hover {
                 background: rgba(97, 218, 251, 0.8);
                 color: #282c34;
                 transform: scale(1.1);
             }
+
             .viewport-arrow:active {
                 transform: scale(1);
             }
+
             .viewport-arrow:disabled {
                 opacity: 0.5;
                 cursor: not-allowed;
                 transform: scale(1);
             }
         `;
+
         document.head.appendChild(styleSheet);
     }
 
@@ -118,18 +131,21 @@ class CornerViewport {
             arrow.className = 'viewport-arrow';
             arrow.style.cssText = position;
             arrow.innerHTML = symbol;
+
             arrow.addEventListener('click', () => {
                 if (!this.isAnimating) {
                     this.animateRotation(axis, angle);
                 }
             });
+
             this.container.appendChild(arrow);
         });
+
     }
 
     animateRotation(axis, angle) {
         if (this.isAnimating) return;
-        
+
         this.isAnimating = true;
         const startTime = Date.now();
         const startQuaternion = this.currentRotation.clone();
@@ -137,16 +153,15 @@ class CornerViewport {
             axis,
             THREE.MathUtils.degToRad(angle)
         );
+
         const endQuaternion = startQuaternion.clone().multiply(rotationQuaternion);
 
-        // Calculate camera start and end positions
         const startCameraPosition = this.camera.position.clone();
         const startCameraUp = this.camera.up.clone();
 
         const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / this.animationDuration, 1);
-            
             // Smooth easing
             const eased = 1 - Math.pow(1 - progress, 3);
 
@@ -156,20 +171,22 @@ class CornerViewport {
 
             // Apply rotation to cube and scene
             this.cube.quaternion.copy(currentQuaternion);
-            
+
             // Rotate camera around the scene
             const rotatedPosition = startCameraPosition.clone().applyQuaternion(rotationQuaternion);
             const rotatedUp = startCameraUp.clone().applyQuaternion(rotationQuaternion);
-            
+
             this.camera.position.copy(rotatedPosition);
             this.camera.up.copy(rotatedUp);
             this.camera.lookAt(0, 0, 0);
 
             // Update main camera if it exists
+
             if (this.mainCamera) {
                 this.mainCamera.position.copy(rotatedPosition);
                 this.mainCamera.up.copy(rotatedUp);
                 this.mainCamera.lookAt(0, 0, 0);
+
                 if (this.mainControls) {
                     this.mainControls.update();
                 }
@@ -180,12 +197,84 @@ class CornerViewport {
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
+
             } else {
                 this.isAnimating = false;
             }
         };
 
         animate();
+    }
+
+    setupMouseControls() {
+        this.renderer.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
+        document.addEventListener('mousemove', this.onMouseMove.bind(this));
+        document.addEventListener('mouseup', this.onMouseUp.bind(this));
+    }
+
+    onMouseDown(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObject(this.controlPoint);
+
+        if (intersects.length > 0) {
+            this.isDragging = true;
+            this.previousMousePosition.set(event.clientX, event.clientY);
+            this.renderer.domElement.style.cursor = 'grabbing';
+        }
+    }
+
+    onMouseMove(event) {
+        if (!this.isDragging) return;
+
+        const deltaMove = {
+            x: event.clientX - this.previousMousePosition.x,
+            y: event.clientY - this.previousMousePosition.y
+        };
+
+        // Calculate angle based on mouse movement
+        const rotationAngle = (deltaMove.x * Math.PI) / 180;
+
+        // Update control point position
+        const currentAngle = Math.atan2(
+            this.controlPoint.position.z,
+            this.controlPoint.position.x
+        );
+        const newAngle = currentAngle + rotationAngle;
+        
+        this.controlPoint.position.x = 1.5 * Math.cos(newAngle);
+        this.controlPoint.position.z = 1.5 * Math.sin(newAngle);
+
+        // Rotate cube
+        const rotationAxis = new THREE.Vector3(0, 1, 0);
+        const rotationQuaternion = new THREE.Quaternion();  
+        rotationQuaternion.setFromAxisAngle(rotationAxis, rotationAngle);
+        
+        this.cube.quaternion.multiply(rotationQuaternion);
+        
+        // Update main camera if it exists
+        if (this.mainCamera) {
+            const rotatedPosition = this.mainCamera.position.clone().applyQuaternion(rotationQuaternion);
+            const rotatedUp = this.mainCamera.up.clone().applyQuaternion(rotationQuaternion);
+            
+            this.mainCamera.position.copy(rotatedPosition);
+            this.mainCamera.up.copy(rotatedUp);
+            this.mainCamera.lookAt(0, 0, 0);
+            
+            if (this.mainControls) {
+                this.mainControls.update();
+            }
+        }
+
+        this.previousMousePosition.set(event.clientX, event.clientY);
+    }
+
+    onMouseUp() {
+        this.isDragging = false;
+        this.renderer.domElement.style.cursor = 'default';
     }
 
     createCube() {
@@ -207,68 +296,117 @@ class CornerViewport {
         const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
         this.cube.add(edges);
     
-        // Add cube to scene
         this.scene.add(this.cube);
     
-        // Axes directions
+        // Add axes and labels
+        this.addAxesAndLabels();
+    }
+
+    addAxesAndLabels() {
         const axisLength = 1.5;
-        const arrowSize = 0.2; // Size of the arrowhead
-        const xDir = new THREE.Vector3(1, 0, 0);
-        const yDir = new THREE.Vector3(0, 1, 0);
-        const zDir = new THREE.Vector3(0, 0, 1);
-    
-        // Create Arrows for axes
-        const origin = new THREE.Vector3(0, 0, 0);
-        const xArrow = new THREE.ArrowHelper(xDir, origin, axisLength, 0xff0000, arrowSize, 0.2);
-        const yArrow = new THREE.ArrowHelper(yDir, origin, axisLength, 0x00ff00, arrowSize, 0.2);
-        const zArrow = new THREE.ArrowHelper(zDir, origin, axisLength, 0x0000ff, arrowSize, 0.2);
+        const arrowSize = 0.2;
+        
+        const xArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0),
+            new THREE.Vector3(0, 0, 0),
+            axisLength,
+            0xff0000,
+            arrowSize,
+            0.2
+        );
+        const yArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 1, 0),
+            new THREE.Vector3(0, 0, 0),
+            axisLength,
+            0x00ff00,
+            arrowSize,
+            0.2
+        );
+        const zArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(0, 0, 0),
+            axisLength,
+            0x0000ff,
+            arrowSize,
+            0.2
+        );
         
         this.scene.add(xArrow, yArrow, zArrow);
-    
-        // Function to create text labels
-        const createTextLabel = (text, position, color) => {
-            const canvas = document.createElement("canvas");
-            canvas.width = 64;
-            canvas.height = 64;
-            const ctx = canvas.getContext("2d");
-            
-            // Clear the canvas first
-            ctx.fillStyle = "rgba(0, 0, 0, 0)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Center the text
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.font = "32px Arial";
-            ctx.fillStyle = color;
-            ctx.fillText(text, canvas.width/2, canvas.height/2);
-        
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.needsUpdate = true;  // Important!
-            
-            const spriteMaterial = new THREE.SpriteMaterial({ 
-                map: texture,
-                transparent: true
-            });
-            const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(0.5, 0.5, 1);
-            sprite.position.copy(position);
-        
-            return sprite;
-        };
-    
+
         // Add axis labels
         const labelOffset = 0.3;
-        this.scene.add(createTextLabel("X", new THREE.Vector3(axisLength + labelOffset, 0, 0), "#ff0000"));
-        this.scene.add(createTextLabel("Y", new THREE.Vector3(0, axisLength + labelOffset, 0), "#00ff00"));
-        this.scene.add(createTextLabel("Z", new THREE.Vector3(0, 0, axisLength + labelOffset), "#0000ff"));    }
+        this.addAxisLabel("X", new THREE.Vector3(axisLength + labelOffset, 0, 0), "#ff0000");
+        this.addAxisLabel("Y", new THREE.Vector3(0, axisLength + labelOffset, 0), "#00ff00");
+        this.addAxisLabel("Z", new THREE.Vector3(0, 0, axisLength + labelOffset), "#0000ff");
+    }
+
+    addAxisLabel(text, position, color) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+        
+        ctx.fillStyle = "rgba(0, 0, 0, 0)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "32px Arial";
+        ctx.fillStyle = color;
+        ctx.fillText(text, canvas.width/2, canvas.height/2);
     
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(0.5, 0.5, 1);
+        sprite.position.copy(position);
+    
+        this.scene.add(sprite);
+    }
+
+    createRing() {
+        // Create horizontal ring
+        const ringGeometry = new THREE.TorusGeometry(1.5, 0.03, 64, 100);
+        const ringMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x666666,
+            transparent: true,
+            opacity: 0.7
+        });
+
+        this.ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        this.ring.rotation.x = Math.PI / 2;
+        //this.ring.rotation.y = Math.PI / Math.PI;
+        //this.ring.rotation.z = Math.PI;
+        this.scene.add(this.ring);
+        
+        // Create draggable control point
+        const sphereGeometry = new THREE.SphereGeometry(0.13, 16, 16);
+        const sphereMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x61dafb,
+            emissive: 0x61dafb,
+            emissiveIntensity: 0.8
+        });
+        this.controlPoint = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        this.controlPoint.position.set(1.5, 0, 0);
+        this.scene.add(this.controlPoint);
+    }
 
     update() {
         this.renderer.render(this.scene, this.camera);
     }
 
     dispose() {
+        // Remove event listeners
+        this.renderer.domElement.removeEventListener('mousedown', this.onMouseDown);
+        document.removeEventListener('mousemove', this.onMouseMove);
+        document.removeEventListener('mouseup', this.onMouseUp);
+        
+        // Remove from DOM and dispose resources
         this.container.remove();
         this.renderer.dispose();
     }

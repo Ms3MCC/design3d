@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import * as setUp from './setup.js';
-import * as obj from './obj.js'
-import * as et from './events.js'
-import * as rc from './myRayCaster.js'
+import * as obj from './obj.js';
+import * as et from './events.js';
+import * as rc from './myRayCaster.js';
 import { Pane } from "tweakpane";
 import { createGridHelpers } from './gridHelper.js';
-import { createCornerViewport } from './viewportHelper.js'
+import { createCornerViewport } from './viewportHelper.js';
 
 
 // some variable that are send in functions implemented in other files
@@ -45,7 +45,6 @@ pane.addBinding(params,"geometry",{
             Box: "Box",
             Cone: "Cone",
             Cylinder: "Cylinder",
-
         },
 }
 )
