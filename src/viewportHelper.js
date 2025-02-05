@@ -5,7 +5,7 @@ import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 class CornerViewport {
     constructor(mainCamera, mainControls) {
         this.size = 200;
-        this.animationDuration = 100;
+        this.animationDuration = 700;
         this.isAnimating = false;
         this.isDragging = false;
         this.previousMousePosition = new THREE.Vector2();
@@ -304,7 +304,7 @@ class CornerViewport {
         this.scene.add(xArrow, yArrow, zArrow);
 
         // Add axis labels
-        const labelOffset = 0.3;
+        const labelOffset = 0.4;
         this.addAxisLabel("X", new THREE.Vector3(axisLength + labelOffset, 0, 0), "#ff0000");
         this.addAxisLabel("Y", new THREE.Vector3(0, axisLength + labelOffset, 0), "#00ff00");
         this.addAxisLabel("Z", new THREE.Vector3(0, 0, axisLength + labelOffset), "#0000ff");

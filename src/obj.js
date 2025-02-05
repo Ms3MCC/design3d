@@ -57,24 +57,24 @@ export function updateObjectSelector(objects,pane,selectedObject,params){
 
 
 
-export function addObject(geometryType,mygroup,objects,pane,params,selectedObject,material=new THREE.MeshStandardMaterial({ color: 0xff0000 }))
+export function addObject(geometryType,mygroup,objects,pane,params,selectedObject,material=new THREE.MeshPhysicalMaterial({ clearcoatRoughness: 0.1, clearcoat:0.7, roughness: 0.9, metalness: 1, color: 0x0088ff }))
 {
         let geometry;
         switch (geometryType) {
             case "Sphere":
-                geometry = new THREE.SphereGeometry(0.5, 32, 32);
+                geometry = new THREE.SphereGeometry(2, 128, 128);
                 break;
             case "Box":
-                geometry = new THREE.BoxGeometry(1, 1, 1);
+                geometry = new THREE.BoxGeometry(3, 3, 3, 10, 10, 10);
                 break;
             case "Cone":
-                geometry = new THREE.ConeGeometry(0.5, 1, 32);
+                geometry = new THREE.ConeGeometry(2, 6, 128, 128);
                 break;
             case "Cylinder":
-                geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                geometry = new THREE.CylinderGeometry(2, 2, 4, 64, 64);
                 break;
             default:
-                geometry = new THREE.SphereGeometry(0.5, 32, 32);
+                geometry = new THREE.SphereGeometry(2, 128, 128);
         }
         const obValue=objects.length;
         const mesh = new THREE.Mesh(geometry, material.clone());

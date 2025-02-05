@@ -26,7 +26,7 @@ scene.add(mygroup)
 
 const [gridXZ, gridXY, gridYZ] = createGridHelpers(100, 100); //size, divisions
 // scene.add(gridXZ);
-scene.add(gridXY);
+//scene.add(gridXY);
 //scene.add(gridYZ);
 
 const cornerViewport = createCornerViewport(camera, controls);
