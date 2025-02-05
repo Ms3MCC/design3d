@@ -8,7 +8,7 @@ import { createGridHelpers } from './gridHelper.js';
 
 
 // some variable that are send in functions implemented in other files
-
+const moveSpeed = 0.1;
 const rotationSpeed = 0.05;
 const keysPressed = {};
 const objects = [];
