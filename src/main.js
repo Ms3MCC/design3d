@@ -25,7 +25,7 @@ const mygroup = new THREE.Group();
 scene.add(mygroup)
 
 const [gridXZ, gridXY, gridYZ] = createGridHelpers(100, 100); //size, divisions
-scene.add(gridXZ);
+// scene.add(gridXZ);
 scene.add(gridXY);
 //scene.add(gridYZ);
 
